@@ -1,0 +1,6 @@
+name: "RgbColorsApi"
+version: "1.0"
+main: me.sirimperivm.rgbColorsApi.RgbColorApi
+author: "SirImperivm_"
+api-version: "21"
+description: "Api that can colorize in RGB strings."
