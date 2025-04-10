@@ -21,41 +21,40 @@ public class ColorApi {
     private static final String[] RAINBOW_COLORS = { "FF0000", "FF7F00", "FFFF00", "00FF00", "0000FF", "4B0082", "9400D3" };
 
     public static String colorize(String text) {
-        if (text == null || text.isEmpty()) return null;
+        if (text == null || text.isEmpty()) return text;
 
         StringBuilder result = new StringBuilder();
-        Matcher gradientMatcher = GRADIENT_PATTERN.matcher(text);
-        Matcher hexMatcher = HEX_PATTERN.matcher(text);
-        Matcher rainbowMatcher = RAINBOW_PATTERN.matcher(text);
-
         int lastIndex = 0;
-        while (gradientMatcher.find()) {
-            result.append(text, lastIndex, gradientMatcher.start());
-            String gradientText = getNextSegment(text.substring(gradientMatcher.end()));
-            result.append(applyGradient(gradientText, gradientMatcher.group(1), gradientMatcher.group(2)));
-            lastIndex = gradientMatcher.end() + gradientText.length() ;
+
+        // Pattern UNICO che gestisce tutti i casi possibili
+        Pattern pattern = Pattern.compile("&#([A-Fa-f0-9]{6})-&#([A-Fa-f0-9]{6})|&#([A-Fa-f0-9]{6})|&#RAINBOW");
+        Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()) {
+            result.append(ChatColor.translateAlternateColorCodes('&', text.substring(lastIndex, matcher.start())));
+
+            String matchedSegment = getNextSegment(text.substring(matcher.end()));
+
+            // Controllo sul tipo di match trovato
+            if (matcher.group(1) != null && matcher.group(2) != null) {
+                result.append(applyGradient(matchedSegment, matcher.group(1), matcher.group(2)));
+            } else if (matcher.group(3) != null) {
+                result.append(applyHex(matchedSegment, matcher.group(3)));
+            } else {
+                result.append(applyRainbow(matchedSegment));
+            }
+
+            lastIndex = matcher.end() + matchedSegment.length();
         }
 
-        while (hexMatcher.find()) {
-            result.append(text, lastIndex, hexMatcher.start());
-            String hexText = getNextSegment(text.substring(hexMatcher.end()));
-            result.append(applyHex(hexText, hexMatcher.group(1)));
-            lastIndex = hexMatcher.end() + hexText.length();
-        }
-
-        while (rainbowMatcher.find()) {
-            result.append(text, lastIndex, rainbowMatcher.start());
-            String rainbowText = getNextSegment(text.substring(rainbowMatcher.end()));
-            result.append(applyRainbow(rainbowText));
-            lastIndex = rainbowMatcher.end() + rainbowText.length();
-        }
-
+        // Aggiungiamo il resto della stringa alla fine se necessario
         if (lastIndex < text.length()) {
             result.append(ChatColor.translateAlternateColorCodes('&', text.substring(lastIndex)));
         }
 
         return result.toString();
     }
+
 
     private static String getNextSegment(String text) {
         Matcher nextMatcher =  Pattern.compile("&#[A-Fa-f0-9]{6}-&#[A-Fa-f0-9]{6}|&#[A-Fa-f0-9]{6}|&#RAINBOW").matcher(text);
