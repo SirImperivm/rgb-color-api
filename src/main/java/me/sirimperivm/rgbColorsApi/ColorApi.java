@@ -26,7 +26,6 @@ public class ColorApi {
         StringBuilder result = new StringBuilder();
         int lastIndex = 0;
 
-        // Pattern UNICO che gestisce tutti i casi possibili
         Pattern pattern = Pattern.compile("&#([A-Fa-f0-9]{6})-&#([A-Fa-f0-9]{6})|&#([A-Fa-f0-9]{6})|&#RAINBOW");
         Matcher matcher = pattern.matcher(text);
 
@@ -47,7 +46,6 @@ public class ColorApi {
             lastIndex = matcher.end() + matchedSegment.length();
         }
 
-        // Aggiungiamo il resto della stringa alla fine se necessario
         if (lastIndex < text.length()) {
             result.append(ChatColor.translateAlternateColorCodes('&', text.substring(lastIndex)));
         }
