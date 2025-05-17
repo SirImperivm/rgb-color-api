@@ -83,10 +83,11 @@ public class ColorApi {
         int b2 = Integer.parseInt(endHex.substring(4, 6), 16);
 
         for (int i = 0; i < length; i++) {
-            double ratio = (double) i / (length-1);
-            int r = (int) (r1 + (r2 - r1) * ratio);
-            int g = (int) (g1 + (g2 - g1) * ratio);
-            int b = (int) (b1 + (b2 - b1) * ratio);
+            double ratio = (length > 1) ? (double) i / (length - 1) : 0;
+        
+            int r = (int) Math.round(r1 * (1 - ratio) + r2 * ratio);
+            int g = (int) Math.round(g1 * (1 - ratio) + g2 * ratio);
+            int b = (int) Math.round(b1 * (1 - ratio) + b2 * ratio);
 
             String hexColor = String.format("#%02X%02X%02X", r, g, b);
             gradientMessage.append(ChatColor.of(hexColor)).append(text.charAt(i));
