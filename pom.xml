@@ -6,7 +6,7 @@
 
   <groupId>me.sirimperivm</groupId>
   <artifactId>rgb-color-api</artifactId>
-  <version>1.0.6</version>
+  <version>1.0.7</version>
   <packaging>jar</packaging>
 
   <properties>
@@ -26,7 +26,6 @@
 
   <build>
     <plugins>
-      <!-- Plugin per la compilazione -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -36,8 +35,6 @@
           <target>${java.version}</target>
         </configuration>
       </plugin>
-
-      <!-- Plugin per generare il JAR -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -60,15 +57,12 @@
   </build>
 
   <dependencies>
-    <!-- Dipendenza Spigot (versione 1.16.5 per supporto HEX) -->
     <dependency>
       <groupId>org.spigotmc</groupId>
       <artifactId>spigot-api</artifactId>
       <version>1.21.4-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
-
-    <!-- Dipendenza BungeeCord per ChatColor.of() -->
     <dependency>
       <groupId>net.md-5</groupId>
       <artifactId>bungeecord-api</artifactId>

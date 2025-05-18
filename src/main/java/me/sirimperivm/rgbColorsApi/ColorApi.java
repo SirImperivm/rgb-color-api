@@ -177,16 +177,28 @@ public class ColorApi {
 
     private static ChatColor[] createGradient(Color first, Color second, int amount) {
         ChatColor[] colors = new ChatColor[amount];
-        int amountR = Math.abs(first.getRed() - second.getRed()) / (amount - 1);
-        int amountG = Math.abs(first.getGreen() - second.getGreen()) / (amount - 1);
-        int amountB = Math.abs(first.getBlue() - second.getBlue()) / (amount - 1);
-        int[] colorDir = new int[]{first.getRed() < second.getRed() ? +1 : -1, first.getGreen() < second.getGreen() ? +1 : -1, first.getBlue() < second.getBlue() ? +1 : -1};
+        
+        if (amount <= 1) {
+            colors[0] = ChatColor.of(first);
+            return colors;
+        }
+        
+        double stepR = (second.getRed() - first.getRed()) / (double)(amount - 1);
+        double stepG = (second.getGreen() - first.getGreen()) / (double)(amount - 1);
+        double stepB = (second.getBlue() - first.getBlue()) / (double)(amount - 1);
 
         for (int i = 0; i < amount; i++) {
-            Color color = new Color(first.getRed() + ((amountR * i) * colorDir[0]), first.getGreen() + ((amountG * i) * colorDir[1]), first.getBlue() + ((amountB * i) * colorDir[2]));
-            colors[i] = ChatColor.of(color);
+            int r = limit(first.getRed() + (int)(stepR * i));
+            int g = limit(first.getGreen() + (int)(stepG * i));
+            int b = limit(first.getBlue() + (int)(stepB * i));
+            
+            colors[i] = ChatColor.of(new Color(r, g, b));
         }
         return colors;
+    }
+
+    private static int limit(int value) {
+        return Math.max(0, Math.min(255, value));
     }
 
     public static ChatColor getColor(String matcher) {
