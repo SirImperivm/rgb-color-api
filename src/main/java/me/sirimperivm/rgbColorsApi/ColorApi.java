@@ -58,13 +58,25 @@ public class ColorApi {
 
     public static String color(String string, Color start, Color end) {
         String originalString = string;
-        ChatColor[] colors = createGradient(start, end, withoutSpecialChar(string).length());
+        int length = withoutSpecialChar(string).length();
+        
+        if (length == 0) {
+            return originalString;
+        }
+        
+        ChatColor[] colors = createGradient(start, end, length);
         return apply(originalString, colors);
     }
 
     public static String rainbow(String string) {
         String originalString = string;
-        ChatColor[] colors = createRainbow(withoutSpecialChar(string).length());
+        int length = withoutSpecialChar(string).length();
+        
+        if (length == 0) {
+            return originalString;
+        }
+        
+        ChatColor[] colors = createRainbow(length);
         return apply(originalString, colors);
     }
 
@@ -73,6 +85,10 @@ public class ColorApi {
     }
 
     private static String apply(String source, ChatColor[] colors) {
+        if (source.isEmpty() || colors.length == 0) {
+            return source;
+        }
+        
         StringBuilder specialColors = new StringBuilder();
         StringBuilder stringBuilder = new StringBuilder();
         String[] characters = source.split("");
@@ -88,10 +104,18 @@ public class ColorApi {
                     }
                     i++;
                 } else {
-                    stringBuilder.append(colors[outIndex++]).append(specialColors).append(characters[i]);
+                    if (outIndex < colors.length) {
+                        stringBuilder.append(colors[outIndex++]).append(specialColors).append(characters[i]);
+                    } else {
+                        stringBuilder.append(specialColors).append(characters[i]);
+                    }
                 }
             } else {
-                stringBuilder.append(colors[outIndex++]).append(specialColors).append(characters[i]);
+                if (outIndex < colors.length) {
+                    stringBuilder.append(colors[outIndex++]).append(specialColors).append(characters[i]);
+                } else {
+                    stringBuilder.append(specialColors).append(characters[i]);
+                }
             }
         }
         return stringBuilder.toString();
@@ -107,6 +131,10 @@ public class ColorApi {
     }
 
     private static ChatColor[] createRainbow(int step) {
+        if (step <= 0) {
+            return new ChatColor[0];
+        }
+        
         ChatColor[] colors = new ChatColor[step];
         double colorStep = 1.0D / step;
         for (int i = 0; i < step; i++) {
@@ -121,21 +149,30 @@ public class ColorApi {
     }
 
     private static ChatColor[] createGradient(Color start, Color end, int step) {
+        if (step <= 0) {
+            return new ChatColor[0];
+        }
+        
         ChatColor[] colors = new ChatColor[step];
-
-        int stepR = Math.abs(start.getRed() - end.getRed()) / (step -1);
-        int stepG = Math.abs(start.getGreen() - end.getGreen()) / (step -1);
-        int stepB = Math.abs(start.getBlue() - end.getBlue()) / (step -1);
+        
+        int stepR = (step > 1) ? Math.abs(start.getRed() - end.getRed()) / (step - 1) : 0;
+        int stepG = (step > 1) ? Math.abs(start.getGreen() - end.getGreen()) / (step - 1) : 0;
+        int stepB = (step > 1) ? Math.abs(start.getBlue() - end.getBlue()) / (step - 1) : 0;
 
         int[] direction = { (start.getRed() < end.getRed()) ? 1 : -1, (start.getGreen() < end.getGreen()) ? 1 : -1, (start.getBlue() < end.getBlue()) ? 1 : -1 };
 
         for (int i=0; i<step; i++) {
-            Color color = new Color(start.getRed() + stepR * direction[0] * i, start.getGreen() + stepG * direction[1] * i, start.getBlue() + stepB * direction[2] * i);
-            if (SUPPORTS_RGB) {
-                colors[i] = ChatColor.of(color);
-            } else {
-                colors[i] = getClosestColor(color);
-            }
+            Color color = new Color(
+                start.getRed() + ((step > 1) ? stepR * direction[0] * i : 0),
+                start.getGreen() + ((step > 1) ? stepG * direction[1] * i : 0),
+                start.getBlue() + ((step > 1) ? stepB * direction[2] * i : 0)
+            );
+        
+        if (SUPPORTS_RGB) {
+            colors[i] = ChatColor.of(color);
+        } else {
+            colors[i] = getClosestColor(color);
+        }
         }
         return colors;
     }
@@ -152,103 +189,6 @@ public class ColorApi {
         }
         return COLORS.get(nearestColor);
     }
-
-    /*
-    private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
-    private static final Pattern GRADIENT_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})-&#([A-Fa-f0-9]{6})");
-    private static final Pattern RAINBOW_PATTERN = Pattern.compile("&#RAINBOW");
-
-    private static final String[] RAINBOW_COLORS = { "FF0000", "FF7F00", "FFFF00", "00FF00", "0000FF", "4B0082", "9400D3" };
-
-    public static String colorize(String text) {
-        if (text == null || text.isEmpty()) return text;
-
-        StringBuilder result = new StringBuilder();
-        int lastIndex = 0;
-
-        Pattern pattern = Pattern.compile("&#([A-Fa-f0-9]{6})-&#([A-Fa-f0-9]{6})|&#([A-Fa-f0-9]{6})|&#RAINBOW");
-        Matcher matcher = pattern.matcher(text);
-
-        while (matcher.find()) {
-            result.append(ChatColor.translateAlternateColorCodes('&', text.substring(lastIndex, matcher.start())));
-
-            String matchedSegment = getNextSegment(text.substring(matcher.end()));
-
-            // Controllo sul tipo di match trovato
-            if (matcher.group(1) != null && matcher.group(2) != null) {
-                result.append(applyGradient(matchedSegment, matcher.group(1), matcher.group(2)));
-            } else if (matcher.group(3) != null) {
-                result.append(applyHex(matchedSegment, matcher.group(3)));
-            } else {
-                result.append(applyRainbow(matchedSegment));
-            }
-
-            lastIndex = matcher.end() + matchedSegment.length();
-        }
-
-        if (lastIndex < text.length()) {
-            result.append(ChatColor.translateAlternateColorCodes('&', text.substring(lastIndex)));
-        }
-
-        return result.toString();
-    }
-
-
-    private static String getNextSegment(String text) {
-        Matcher nextMatcher =  Pattern.compile("&#[A-Fa-f0-9]{6}-&#[A-Fa-f0-9]{6}|&#[A-Fa-f0-9]{6}|&#RAINBOW").matcher(text);
-        return nextMatcher.find() ? text.substring(0, nextMatcher.start()) : text;
-    }
-
-    private static String applyHex(String text, String hexColor) {
-        StringBuilder result = new StringBuilder();
-        ChatColor color = ChatColor.of("#" + hexColor);
-        for (char c : text.toCharArray()) {
-            result.append(color).append(c);
-        }
-        return result.toString();
-    }
-
-    private static String applyGradient(String text, String startHex, String endHex) {
-        int length = text.length();
-        if (length == 0) return "";
-
-        StringBuilder gradientMessage = new StringBuilder();
-
-        int r1 = Integer.parseInt(startHex.substring(0, 2), 16);
-        int g1 = Integer.parseInt(startHex.substring(2, 4), 16);
-        int b1 = Integer.parseInt(startHex.substring(4, 6), 16);
-
-        int r2 = Integer.parseInt(endHex.substring(0, 2), 16);
-        int g2 = Integer.parseInt(endHex.substring(2, 4), 16);
-        int b2 = Integer.parseInt(endHex.substring(4, 6), 16);
-
-        for (int i = 0; i < length; i++) {
-            double ratio = (length > 1) ? (double) i / (length - 1) : 0;
-        
-            int r = (int) Math.round(r1 * (1 - ratio) + r2 * ratio);
-            int g = (int) Math.round(g1 * (1 - ratio) + g2 * ratio);
-            int b = (int) Math.round(b1 * (1 - ratio) + b2 * ratio);
-
-            String hexColor = String.format("#%02X%02X%02X", r, g, b);
-            gradientMessage.append(ChatColor.of(hexColor)).append(text.charAt(i));
-        }
-
-        return gradientMessage.toString();
-    }
-
-    private static String applyRainbow(String text) {
-        int length = text.length();
-        if (length == 0) return "";
-
-        StringBuilder rainbowMessage = new StringBuilder();
-
-        for (int i = 0; i < length; i++) {
-            String colorHex = RAINBOW_COLORS[i % RAINBOW_COLORS.length];
-            rainbowMessage.append(ChatColor.of("#" + colorHex)).append(text.charAt(i));
-        }
-
-        return rainbowMessage.toString();
-    }*/
 
     private static int getVersion() {
         String version = Bukkit.getVersion();
