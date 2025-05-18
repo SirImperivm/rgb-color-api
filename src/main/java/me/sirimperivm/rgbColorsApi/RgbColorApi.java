@@ -4,6 +4,7 @@ package me.sirimperivm.rgbColorsApi;
 public class RgbColorApi {
 
     public static String colorize(String message) {
-        return ColorApi.colorize(message);
+        ColorApi colorApi = new ColorApi();
+        return colorApi.process(message);
     }
 }
