@@ -4,6 +4,5 @@ package me.sirimperivm.rgbColorsApi.enums;
 public enum ColorizeType {
     GRADIENT,
     RGB,
-    CLASSIC,
-    RAINBOW
+    CLASSIC
 }

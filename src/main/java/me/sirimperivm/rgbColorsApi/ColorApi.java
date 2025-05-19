@@ -14,19 +14,15 @@ public class ColorApi {
 
     private static final List<String> legacyColors = Arrays.asList("&0", "&1", "&2", "&3", "&4", "&5", "&6", "&7", "&8", "&9", "&a", "&b", "&c", "&d", "&e", "§0", "§1", "§2", "§3", "§4", "§5", "§6", "§7", "§8", "§9", "§a", "§b", "§c", "§d", "§e");
     private static final List<String> specialChars = Arrays.asList("&l", "&n", "&o", "&k", "&m", "§l", "§n", "§o", "§k", "§m");
-    
-    private static final Pattern patternNormal = Pattern.compile("&#([0-9A-Fa-f]{6})(.+?)(?=&#|$)");
-    private static final Pattern patternGrad = Pattern.compile("&#([0-9A-Fa-f]{6})-&#([0-9A-Fa-f]{6})(.+?)(?=&#|$)");
-    private static final Pattern patternRainbow = Pattern.compile("&#RAINBOW(.+?)(?=&#|$)");
-    
-    private static final String[] RAINBOW_COLORS = { "FF0000", "FF7F00", "FFFF00", "00FF00", "0000FF", "4B0082", "9400D3" };
+    private static final Pattern patternNormal = Pattern.compile("\\[#([0-9A-Fa-f]{6})\\]");
+    private static final Pattern patternGrad = Pattern.compile("\\[#([0-9A-Fa-f]{6})>\\](.*?)\\[#([0-9A-Fa-f]{6})<\\]");
+    private static final Pattern patternOneFromTwo = Pattern.compile("\\[#([0-9A-Fa-f]{6})<>\\]");
 
     public static String colorizeType(ColorizeType type, String input) {
         return switch (type) {
             case GRADIENT -> colorizeGradient(input);
             case RGB -> colorizeRGB(input);
             case CLASSIC -> colorizeClassic(input);
-            case RAINBOW -> colorizeRainbow(input);
         };
     }
 
@@ -59,17 +55,16 @@ public class ColorApi {
     }
 
     public static String removePatterns(String input) {
-        input = input.replaceAll("&#([0-9A-Fa-f]{6})-&#([0-9A-Fa-f]{6})", "");
-        input = input.replaceAll("&#([0-9A-Fa-f]{6})", "");
-        input = input.replaceAll("&#RAINBOW", "");
+        input = input.replaceAll("\\[#([0-9A-Fa-f]{6})>\\]", "");
+        input = input.replaceAll("\\[#([0-9A-Fa-f]{6})<\\]", "");
+        input = input.replaceAll("\\[#([0-9A-Fa-f]{6})\\]", "");
         return input;
     }
 
     public static String colorize(String input) {
-        input = colorizeRainbow(input);
         input = colorizeGradient(input);
         input = colorizeRGB(input);
-        return colorizeClassic(input);
+        return input;
     }
 
     public static String colorizeClassic(String input) {
@@ -78,70 +73,43 @@ public class ColorApi {
     }
 
     public static String colorizeGradient(String input) {
-        Matcher matcher = patternGrad.matcher(input);
-        StringBuffer result = new StringBuffer();
-        
+        Matcher matcher = patternOneFromTwo.matcher(input);
+
+        StringBuilder output = new StringBuilder();
+
         while (matcher.find()) {
-            String startColor = matcher.group(1);
-            String endColor = matcher.group(2);
-            String text = matcher.group(3);
-            
-            matcher.appendReplacement(result, color(text, 
-                new Color(Integer.parseInt(startColor, 16)), 
-                new Color(Integer.parseInt(endColor, 16))));
+            String text = matcher.group(1);
+            matcher.appendReplacement(output, "[#" + text + "<][#" + text + ">]");
         }
-        matcher.appendTail(result);
-        
-        return result.toString();
+        matcher.appendTail(output);
+
+        input = output.toString();
+
+        matcher = patternGrad.matcher(input);
+        while (matcher.find()) {
+            input = input.replace(matcher.group(), color(matcher.group(2), new Color(Integer.parseInt(matcher.group(1), 16)), new Color(Integer.parseInt(matcher.group(3), 16))));
+        }
+        return ChatColor.translateAlternateColorCodes('&', input);
     }
 
     public static String colorizeRGB(String input) {
         Matcher matcher = patternNormal.matcher(input);
-        StringBuffer result = new StringBuffer();
-        
+        StringBuilder result = new StringBuilder(input.length());
+
+        int lastEnd = 0;
         while (matcher.find()) {
             String color = matcher.group(1);
-            String text = matcher.group(2);
-            
-            StringBuilder colored = new StringBuilder();
-            ChatColor chatColor = ChatColor.of("#" + color);
-            
-            for (char c : text.toCharArray()) {
-                colored.append(chatColor).append(c);
+            result.append(input, lastEnd, matcher.start());
+
+            if (color != null) {
+                result.append(getColor(color));
             }
-            
-            matcher.appendReplacement(result, colored.toString());
+
+            lastEnd = matcher.end();
         }
-        matcher.appendTail(result);
-        
+
+        result.append(input.substring(lastEnd));
         return result.toString();
-    }
-
-    public static String colorizeRainbow(String input) {
-        Matcher matcher = patternRainbow.matcher(input);
-        StringBuffer result = new StringBuffer();
-
-        while (matcher.find()) {
-            String text = matcher.group(1);
-            matcher.appendReplacement(result, applyRainbow(text));
-        }
-        matcher.appendTail(result);
-
-        return result.toString();
-    }
-
-    private static String applyRainbow(String text) {
-        int length = text.length();
-        if (length == 0) return "";
-
-        StringBuilder rainbowMessage = new StringBuilder();
-
-        for (int i = 0; i < length; i++) {
-            String colorHex = RAINBOW_COLORS[i % RAINBOW_COLORS.length];
-            rainbowMessage.append(ChatColor.of("#" + colorHex)).append(text.charAt(i));
-        }
-
-        return rainbowMessage.toString();
     }
 
     public static String color(String input, Color first, Color second) {
@@ -177,28 +145,16 @@ public class ColorApi {
 
     private static ChatColor[] createGradient(Color first, Color second, int amount) {
         ChatColor[] colors = new ChatColor[amount];
-        
-        if (amount <= 1) {
-            colors[0] = ChatColor.of(first);
-            return colors;
-        }
-        
-        double stepR = (second.getRed() - first.getRed()) / (double)(amount - 1);
-        double stepG = (second.getGreen() - first.getGreen()) / (double)(amount - 1);
-        double stepB = (second.getBlue() - first.getBlue()) / (double)(amount - 1);
+        int amountR = Math.abs(first.getRed() - second.getRed()) / (amount - 1);
+        int amountG = Math.abs(first.getGreen() - second.getGreen()) / (amount - 1);
+        int amountB = Math.abs(first.getBlue() - second.getBlue()) / (amount - 1);
+        int[] colorDir = new int[]{first.getRed() < second.getRed() ? +1 : -1, first.getGreen() < second.getGreen() ? +1 : -1, first.getBlue() < second.getBlue() ? +1 : -1};
 
         for (int i = 0; i < amount; i++) {
-            int r = limit(first.getRed() + (int)(stepR * i));
-            int g = limit(first.getGreen() + (int)(stepG * i));
-            int b = limit(first.getBlue() + (int)(stepB * i));
-            
-            colors[i] = ChatColor.of(new Color(r, g, b));
+            Color color = new Color(first.getRed() + ((amountR * i) * colorDir[0]), first.getGreen() + ((amountG * i) * colorDir[1]), first.getBlue() + ((amountB * i) * colorDir[2]));
+            colors[i] = ChatColor.of(color);
         }
         return colors;
-    }
-
-    private static int limit(int value) {
-        return Math.max(0, Math.min(255, value));
     }
 
     public static ChatColor getColor(String matcher) {
